@@ -1,0 +1,23 @@
+{
+  "name": "rest-examples-in-nodejs",
+  "version": "0.0.1",
+  "description": "Here is an implementation of the examples of the textbook Webber: REST in Practice, O'Reilly 2010",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/th-koeln/REST-Examples-in-NodeJS.git"
+  },
+  "keywords": [
+    "REST",
+    "NodeJS"
+  ],
+  "author": "Nathalie Kuhn, Mario Faske",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/th-koeln/REST-Examples-in-NodeJS/issues"
+  },
+  "homepage": "https://github.com/th-koeln/REST-Examples-in-NodeJS#readme"
+}

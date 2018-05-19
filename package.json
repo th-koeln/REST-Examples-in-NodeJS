@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/th-koeln/REST-Examples-in-NodeJS/issues"
   },
-  "homepage": "https://github.com/th-koeln/REST-Examples-in-NodeJS#readme"
+  "homepage": "https://github.com/th-koeln/REST-Examples-in-NodeJS#readme",
+  "dependencies": {
+    "express": "^4.16.3"
+  }
 }

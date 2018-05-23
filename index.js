@@ -23,15 +23,19 @@ with a random integer from 0-9 as orderId
 */
 app.post('/order', (req, res, next) =>{
 
-    extractOrderFromRequest(req).then((order)=>{
-            if(order == null){
-                res.sendStatus(400);
-            }else{
-                let internalOrderId = saveOrder(order);
-                res.set("Location", computeLocationHeader(req, internalOrderId));
-                res.sendStatus(201);
-            }
-        });
+    try {
+        extractOrderFromRequest(req).then((order)=>{
+                if(order == null){
+                    res.sendStatus(400);
+                }else{
+                    let internalOrderId = saveOrder(order);
+                    res.set("Location", computeLocationHeader(req, internalOrderId));
+                    res.sendStatus(201);
+                }
+            });
+    } catch (error) {
+        res.sendStatus(500);
+    }
   })
 
 /*

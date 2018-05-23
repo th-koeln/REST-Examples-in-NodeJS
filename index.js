@@ -4,7 +4,7 @@ require('body-parser-xml')(bodyParser);
 
 let app = express();
 
-// We store the data in this variable
+// We store the data in this variable as an Object
 var ordersXML;
 
 //Parse the XML data from the body
@@ -50,7 +50,20 @@ implements HTTP Verb GET on specific order with orderId
 respond is the specific order
 */
 app.get('/order/:orderId', (req, res) =>{
-      res.send('Order: ' + req.params.orderId);
+    try {
+        let order = getOrder(req.params.orderId);
+        getOrder(req.params.orderId).then((order)=>{
+            if(order != null){
+                res.set("Content-Type", "application/xml");
+                res.send(order); // This will be an Object without XML Syntax
+            }else{
+                res.sendStatus(404);   
+            }
+        }) 
+    } catch (error) {
+        res.sendStatus(500);
+        // Error Handling
+    }
     })
 
 /* 
@@ -106,6 +119,18 @@ Extracting the order from the request body
 function extractOrderFromRequest(req) {
     return new Promise((resolve, reject) => {
         resolve(req.body);
+        reject("");
+    })
+}
+
+/*
+We just return the saved order from the POST if available for example purposes
+orderId doesnt matter right row
+*/
+function getOrder(orderId) {
+    // TODO: convert Javascript Object to XML, problably with the "js2xmlparser" module
+    return new Promise((resolve, reject) => {
+        resolve(ordersXML);
         reject("");
     })
 }

@@ -1,14 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-require('body-parser-xml')(bodyParser);
+const util = require('util');
 
 let app = express();
 
 // We store the data in this variable as an Object
-var ordersXML;
+var orders = {};
 
 //Parse the XML data from the body
-app.use(bodyParser.xml());
+app.use(bodyParser.json());
 
 // Error Handling
 app.use((err, req, res, next) =>{
@@ -16,11 +16,11 @@ app.use((err, req, res, next) =>{
     res.sendStatus(500);
 });
 
-/*
-implements HTTP Verb POST
-respond is the URI of the order 
-with a random integer from 0-9 as orderId
-*/
+/**
+ * implements HTTP Verb POST
+ * respond is the URI(location) of the order 
+ * with a random integer from 0-100 as orderId
+ */
 app.post('/order', (req, res, next) =>{
 
     try {
@@ -38,28 +38,30 @@ app.post('/order', (req, res, next) =>{
     }
   })
 
-/*
-implements HTTP Verb GET on all orders
-*/
+  /**
+   * implements HTTP Verb GET on all orders
+   */
 app.get('/order', (req, res) =>{
     res.send('All Orders!');
   })
 
-/*
-implements HTTP Verb GET on specific order with orderId
-respond is the specific order
-*/
+/**
+ * implements HTTP Verb GET on specific order with orderId
+ * respond is the specific order
+ */
 app.get('/order/:orderId', (req, res) =>{
     try {
-        let order = getOrder(req.params.orderId);
         getOrder(req.params.orderId).then((order)=>{
             if(order != null){
-                res.set("Content-Type", "application/xml");
+                res.set("Content-Type", "application/json");
                 res.send(order); // This will be an Object without XML Syntax
             }else{
                 res.sendStatus(404);   
             }
-        }) 
+        }).catch((error)=>{
+            console.log(util.inspect(error, false, null));
+            res.sendStatus(404);
+        })
     } catch (error) {
         res.sendStatus(500);
         // Error Handling
@@ -83,15 +85,20 @@ app.delete('/order/:orderId', (req, res) =>{
     })
 
 /*
-saved port in a constant variable
+saved port in the constant variable settings
 */
 const settings = {
     port: process.env.PORT || 3000
 };
 
-/*
-Building the location header
-*/
+
+/**
+ * Here we build the location header
+ * 
+ * We use the informations from the request and the generated ID for this order
+ * @param {object} req 
+ * @param {number} orderId 
+ */
 function computeLocationHeader(req, orderId){
 
     let locationHeader = `${req.protocol}://${req.headers.host}/order/${orderId}`;
@@ -99,41 +106,52 @@ function computeLocationHeader(req, orderId){
     return locationHeader
 }
 
-/*
-This function writes the order into a database under a random ID
-For example purposes we overwrite the old order with the new one
-We dont link the order directly with an ID, but generating a new ID every time
-*/
+/**
+ * This function writes the order into an object file under a random ID
+ * 
+ * We check if the generated ID is already used for an order
+ * if not, we save the order with the generated ID
+ * @param {object} order 
+ */
 function saveOrder(order) {
-
-    let internalOrderId = Math.floor(Math.random() * 10);
-
-    ordersXML = order;
-
+    let isUniqueID = false;
+    let internalOrderId;
+    while (!isUniqueID) {
+        internalOrderId = Math.floor(Math.random() * (100 - 1)+1);
+        if (orders.internalOrderId == null) {
+            isUniqueID = true;
+        }    
+    }
+    orders[internalOrderId] = order;
     return internalOrderId;
 }
 
-/*
-Extracting the order from the request body
-*/
+/**
+ * Extracting the order from the request body
+ * @param {object} req
+ */
 function extractOrderFromRequest(req) {
     return new Promise((resolve, reject) => {
         resolve(req.body);
-        reject("");
+        reject("Something went wrong");
     })
 }
 
-/*
-We just return the saved order from the POST if available for example purposes
-orderId doesnt matter right row
-*/
+/**
+ * We get the order from the order object with the given ID
+ * if the order with orderID does not exist, we reject the promise
+ * @param {number} orderId 
+ */
 function getOrder(orderId) {
-    // TODO: convert Javascript Object to XML, problably with the "js2xmlparser" module
     return new Promise((resolve, reject) => {
-        resolve(ordersXML);
-        reject("");
+        if(orders.orderId != null){
+            
+            resolve(orders.orderId);
+        }else{
+            reject(`Order with ID ${orderId} not found!`);
+        }
     })
 }
 
-
+// The port, where the app is listening
 app.listen(3000);

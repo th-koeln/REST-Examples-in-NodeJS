@@ -18,7 +18,7 @@ app.use((err, req, res, next) =>{
 
 /**
  * implements HTTP Verb POST
- * respond is the URI(location) of the order 
+ * respond is the URI(location) of the order
  * with a random integer from 0-100 as orderId
  */
 app.post('/order', (req, res, next) =>{
@@ -42,7 +42,19 @@ app.post('/order', (req, res, next) =>{
    * implements HTTP Verb GET on all orders
    */
 app.get('/order', (req, res) =>{
-    res.send('All Orders!');
+    try {
+        extractOrderFromRequest(req).then((order)=>{
+                if (order != null) {
+                    res.set("Content-Type", "application/json");
+                    res.send(order);
+                }
+                else {
+                    res.sendStatus(404);
+                }
+        });
+    } catch (error) {
+        res.sendStatus(500);
+    }
   })
 
 /**
@@ -56,7 +68,7 @@ app.get('/order/:orderId', (req, res) =>{
                 res.set("Content-Type", "application/json");
                 res.send(order); // This will be an Object without XML Syntax
             }else{
-                res.sendStatus(404);   
+                res.sendStatus(404);
             }
         }).catch((error)=>{
             console.log(util.inspect(error, false, null));
@@ -68,21 +80,21 @@ app.get('/order/:orderId', (req, res) =>{
     }
     })
 
-/* 
-implements HTTP Verb PUT on specific order with orderId 
+/*
+implements HTTP Verb PUT on specific order with orderId
 respond is the specific order
 */
 app.put('/order/:orderId', (req, res) =>{
-      res.send('Order updated: ' + req.params.orderId);
+    res.send('Order updated: ' + req.params.orderId);
     })
 
-/* 
-implements HTTP Verb DELETE on specific order with orderId 
+/*
+implements HTTP Verb DELETE on specific order with orderId
 respond is the specific order
 */
 app.delete('/order/:orderId', (req, res) =>{
-      res.send('Order deleted: ' + req.params.orderId);
-    })
+  res.send('Order deleted: ' + req.params.orderId);
+})
 
 /*
 saved port in the constant variable settings
@@ -94,10 +106,10 @@ const settings = {
 
 /**
  * Here we build the location header
- * 
+ *
  * We use the informations from the request and the generated ID for this order
- * @param {object} req 
- * @param {number} orderId 
+ * @param {object} req
+ * @param {number} orderId
  */
 function computeLocationHeader(req, orderId){
 
@@ -108,10 +120,10 @@ function computeLocationHeader(req, orderId){
 
 /**
  * This function writes the order into an object file under a random ID
- * 
+ *
  * We check if the generated ID is already used for an order
  * if not, we save the order with the generated ID
- * @param {object} order 
+ * @param {object} order
  */
 function saveOrder(order) {
     let isUniqueID = false;
@@ -120,7 +132,7 @@ function saveOrder(order) {
         internalOrderId = Math.floor(Math.random() * (100 - 1)+1);
         if (orders.internalOrderId == null) {
             isUniqueID = true;
-        }    
+        }
     }
     orders[internalOrderId] = order;
     return internalOrderId;
@@ -140,12 +152,12 @@ function extractOrderFromRequest(req) {
 /**
  * We get the order from the order object with the given ID
  * if the order with orderID does not exist, we reject the promise
- * @param {number} orderId 
+ * @param {number} orderId
  */
 function getOrder(orderId) {
     return new Promise((resolve, reject) => {
         if(orders.orderId != null){
-            
+
             resolve(orders.orderId);
         }else{
             reject(`Order with ID ${orderId} not found!`);

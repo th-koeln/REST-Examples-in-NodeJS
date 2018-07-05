@@ -1,13 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const util = require('util');
+const halson = require('halson');
 
 let app = express();
 
 // We store the data in this variable as an Object
-var orders = {};
+var orders = halson({});
 
-//Parse the XML data from the body
+//Parse the JSON data from the body
 app.use(bodyParser.json());
 
 // Error Handling
@@ -15,6 +16,29 @@ app.use((err, req, res, next) =>{
     console.error(err.stack);
     res.sendStatus(500);
 });
+
+app.get('/', (req, res, err)=>{
+
+    let browseHAL = halson({
+        "_links": {
+            "curies": [
+              {
+                "name": "rb",
+                "href": "http://localhost:3000/{rel}",
+                "templated": true
+              }
+            ],
+            "rb:order": {
+              "href": "/order"
+            }
+          },
+          "welcome": "Welcome to Restbucks.",
+
+    })
+    .addLink('self', '/');
+
+    res.send(browseHAL);
+})
 
 /**
  * implements HTTP Verb POST
@@ -42,19 +66,26 @@ app.post('/order', (req, res, next) =>{
    * implements HTTP Verb GET on all orders
    */
 app.get('/order', (req, res) =>{
-    try {
-        extractOrderFromRequest(req).then((order)=>{
-                if (order != null) {
-                    res.set("Content-Type", "application/json");
-                    res.send(order);
-                }
-                else {
-                    res.sendStatus(404);
-                }
-        });
-    } catch (error) {
-        res.sendStatus(500);
-    }
+
+    let allOrders = halson({
+        "_links": {
+            "curies": [
+              {
+                "name": "rb",
+                "href": "http://localhost:3000/order/{rel}",
+                "templated": true
+              }
+            ],
+            "rb:find": {
+              "href": "/order{?id}",
+              "templated" : true
+            }
+          }
+    })
+    .addLink('self', '/order')
+    .addEmbed('rb:order', orders);
+    res.set("Content-Type", "application/hal+json");
+    res.send(allOrders);
   })
 
 /**
@@ -66,7 +97,7 @@ app.get('/order/:orderId', (req, res) =>{
         getOrder(req.params.orderId).then((order)=>{
             if(order != null){
                 res.set("Content-Type", "application/json");
-                res.send(order); // This will be an Object without XML Syntax
+                res.send(order);
             }else{
                 res.sendStatus(404);
             }
@@ -103,7 +134,6 @@ const settings = {
     port: process.env.PORT || 3000
 };
 
-
 /**
  * Here we build the location header
  *
@@ -128,13 +158,17 @@ function computeLocationHeader(req, orderId){
 function saveOrder(order) {
     let isUniqueID = false;
     let internalOrderId;
+    let halOrder = halson(order);
+
     while (!isUniqueID) {
         internalOrderId = Math.floor(Math.random() * (100 - 1)+1);
         if (orders.internalOrderId == null) {
             isUniqueID = true;
         }
     }
-    orders[internalOrderId] = order;
+    halOrder.addLink('/self', `/order/${internalOrderId}`);
+    orders[internalOrderId] = halOrder;
+    
     return internalOrderId;
 }
 
@@ -156,9 +190,8 @@ function extractOrderFromRequest(req) {
  */
 function getOrder(orderId) {
     return new Promise((resolve, reject) => {
-        if(orders.orderId != null){
-
-            resolve(orders.orderId);
+        if(orders[orderId] != null){
+            resolve(orders[orderId]);
         }else{
             reject(`Order with ID ${orderId} not found!`);
         }

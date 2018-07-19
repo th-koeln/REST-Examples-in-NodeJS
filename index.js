@@ -17,27 +17,37 @@ app.use((err, req, res, next) =>{
     res.sendStatus(500);
 });
 
+
+/**
+ * Here we GET the informations on this REST Api via HAL
+ * 
+ * Right now there is online "/order" but this can be expanded later on
+ */
 app.get('/', (req, res, err)=>{
-
-    let browseHAL = halson({
-        "_links": {
-            "curies": [
-              {
-                "name": "rb",
-                "href": "http://localhost:3000/{rel}",
-                "templated": true
-              }
-            ],
-            "rb:order": {
-              "href": "/order"
-            }
-          },
-          "welcome": "Welcome to Restbucks.",
-
-    })
-    .addLink('self', '/');
-
-    res.send(browseHAL);
+    try {
+        let browseHAL = halson({
+            "_links": {
+                "curies": [
+                  {
+                    "name": "rb",
+                    "href": "http://localhost:3000/{rel}",
+                    "templated": true
+                  }
+                ],
+                "rb:order": {
+                  "href": "/order"
+                }
+              },
+              "welcome": "Welcome to Restbucks.",
+    
+        })
+        .addLink('self', '/');
+    
+        res.send(browseHAL);
+    } catch (error) {
+        res.sendStatus(500);
+    }
+    
 })
 
 /**
@@ -64,28 +74,33 @@ app.post('/order', (req, res, next) =>{
 
   /**
    * implements HTTP Verb GET on all orders
+   * 
    */
 app.get('/order', (req, res) =>{
-
-    let allOrders = halson({
-        "_links": {
-            "curies": [
-              {
-                "name": "rb",
-                "href": "http://localhost:3000/order/{rel}",
-                "templated": true
+    try {
+        let allOrders = halson({
+            "_links": {
+                "curies": [
+                  {
+                    "name": "rb",
+                    "href": "http://localhost:3000/order/{rel}",
+                    "templated": true
+                  }
+                ],
+                "rb:find": {
+                  "href": "/order{?id}",
+                  "templated" : true
+                }
               }
-            ],
-            "rb:find": {
-              "href": "/order{?id}",
-              "templated" : true
-            }
-          }
-    })
-    .addLink('self', '/order')
-    .addEmbed('rb:order', orders);
-    res.set("Content-Type", "application/hal+json");
-    res.send(allOrders);
+        })
+        .addLink('self', '/order')
+        .addEmbed('rb:order', orders);
+        res.set("Content-Type", "application/hal+json");
+        res.send(allOrders);
+    } catch (error) {
+        res.sendStatus(500);
+    }
+    
   })
 
 /**
@@ -96,7 +111,7 @@ app.get('/order/:orderId', (req, res) =>{
     try {
         getOrder(req.params.orderId).then((order)=>{
             if(order != null){
-                res.set("Content-Type", "application/json");
+                res.set("Content-Type", "application/hal+json");
                 res.send(order);
             }else{
                 res.sendStatus(404);
@@ -111,20 +126,56 @@ app.get('/order/:orderId', (req, res) =>{
     }
     })
 
-/*
-implements HTTP Verb PUT on specific order with orderId
-respond is the specific order
-*/
+/**
+ * implements HTTP Verb PUT on specific order with orderId
+ * response is the specific order
+ * 
+ * First we extract the order data from the request,
+ * after that, call the updateOrder function 
+ * 
+ */
 app.put('/order/:orderId', (req, res) =>{
-    res.send('Order updated: ' + req.params.orderId);
+    try {
+        extractOrderFromRequest(req).then((newOrder)=>{
+            updateOrder(req.params.orderId,newOrder).then((order)=>{
+                res.set("Content-Type", "application/hal+json");
+                res.send(order);
+    
+            }).catch((error)=>{
+                console.log(util.inspect(error, false, null));
+                res.sendStatus(404);
+            })
+            
+        })
+        
+    } catch (error) {
+        res.sendStatus(500);
+        // Error Handling
+    }
     })
 
 /*
-implements HTTP Verb DELETE on specific order with orderId
-respond is the specific order
+
+
 */
+/**
+ * implements HTTP Verb DELETE on specific order with orderId
+ * 
+ * calls the deleteOrder function
+ */
 app.delete('/order/:orderId', (req, res) =>{
-  res.send('Order deleted: ' + req.params.orderId);
+    try {
+        deleteOrder(req.params.orderId).then((status)=>{
+            res.set("Content-Type", "application/hal+json");
+            res.send(status);
+          }).catch((error)=>{
+            console.log(util.inspect(error, false, null));
+            res.sendStatus(404);
+        })
+    } catch (error) {
+        res.sendStatus(500);
+        // Error Handling
+    }
 })
 
 /*
@@ -170,6 +221,38 @@ function saveOrder(order) {
     orders[internalOrderId] = halOrder;
     
     return internalOrderId;
+}
+/**
+ * This function gets called on a PUT Request.
+ * It checks if the order is in the "database" and if so, replaces the order contents with the updated data.
+ * 
+ * @param {number} orderid 
+ * @param {object} order 
+ */
+function updateOrder(orderId, newOrder) {
+    return new Promise((resolve, reject) => {
+        if(orders[orderId] != null){
+            orders[orderId].order = newOrder.order;
+            resolve("Updated!");
+        }else{
+            reject(`Order with ID ${orderId} not found!`);
+        }
+    })
+}
+/**
+ * This function deletes the order from orders.
+ *  
+ * @param {number} orderId 
+ */
+function deleteOrder(orderId) {
+    return new Promise((resolve, reject) => {
+        if(orders[orderId] != null){
+            delete orders[orderId];
+            resolve("Deleted!");
+        }else{
+            reject(`Order with ID ${orderId} not found!`);
+        }
+    })
 }
 
 /**
